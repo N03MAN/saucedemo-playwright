@@ -13,77 +13,171 @@ test.describe('Sauce Demo - Happy Path Checkout', () => {
     const login = new LoginPage(page);
     const inventory = new InventoryPage(page);
     const cart = new CartPage(page);
-    const step1 = new CheckoutStepOnePage(page);
-    const step2 = new CheckoutStepTwoPage(page);
-    const complete = new CheckoutCompletePage(page);
+    const checkoutStepOne = new CheckoutStepOnePage(page);
+    const checkoutStepTwo = new CheckoutStepTwoPage(page);
+    const checkoutComplete = new CheckoutCompletePage(page);
 
-    // Generate test customer data
+    // Generate consistent test data using seed
     const testData = generateSeededCheckoutData();
-    let selectedProducts: ProductId[] = [];
+    const selectedProducts: ProductId[] = getRandomProducts(3);
 
     console.log('Test Data:');
     console.log(`Customer: ${testData.fullName}`);
     console.log(`Address: ${testData.address}`);
     console.log(`Postal Code: ${testData.postalCode}`);
-    console.log('');
 
     await test.step('User Authentication', async () => {
       console.log('Step 1: Authenticating user');
+      
+      await login.goto();
+      
+      // Core login page validation
+      await expect(login.loginContainer).toBeVisible();
+      await expect(login.loginLogo).toContainText('Swag Labs');
+      await expect(login.username).toBeVisible();
+      await expect(login.password).toBeVisible();
+      await expect(login.loginButton).toBeVisible();
+      
+      // Validate form fields have empty values
+      await expect(login.username).toHaveValue('');
+      await expect(login.password).toHaveValue('');
+      
       await login.login('standard_user', 'secret_sauce');
-      await inventory.assertOnPage();
       console.log('Login successful');
     });
 
     await test.step('Product Selection', async () => {
       console.log('Step 2: Selecting products');
-      selectedProducts = getRandomProducts(3);
+      
+      await inventory.assertOnPage();
+      
+      // Core inventory page validation
+      await expect(inventory.inventoryContainer).toBeVisible();
+      await expect(inventory.title).toContainText('Products');
+      await expect(inventory.inventoryList).toBeVisible();
+      
+      // Validate products are displayed
+      await expect(inventory.inventoryList.locator('[data-test="inventory-item"]')).toHaveCount(6);
       
       console.log('Adding products to cart:');
-      for (const [index, productId] of selectedProducts.entries()) {
+      for (let i = 0; i < selectedProducts.length; i++) {
+        const productId = selectedProducts[i];
         const productName = PRODUCT_NAMES[productId];
-        console.log(`  ${index + 1}. ${productName}`);
+        console.log(`  ${i + 1}. ${productName}`);
+        
         await inventory.addProduct(productId);
+        await inventory.assertProductAdded(productId);
       }
-      console.log(`Added ${selectedProducts.length} products to cart`);
+      
+      console.log('Added 3 products to cart');
     });
 
     await test.step('Cart Review & Checkout Initiation', async () => {
       console.log('Step 3: Proceeding to checkout');
-      await inventory.header.cartLink.click();
+      
+      await inventory.header.clickCart();
+      await cart.assertOnPage();
+      
+      // Core cart page validation
+      await expect(cart.cartContentsContainer).toBeVisible();
+      await expect(cart.title).toContainText('Your Cart');
+      await expect(cart.cartList).toBeVisible();
+      await cart.assertCartItemCount(3);
+      
+      // Validate cart items
+      for (const productId of selectedProducts) {
+        await cart.assertCartItem(productId);
+      }
+      
       await cart.proceedToCheckout();
       console.log('Checkout initiated');
     });
 
     await test.step('Shipping Information Entry', async () => {
       console.log('Step 4: Entering shipping information');
-      console.log(`Customer: ${testData.firstName} ${testData.lastName}`);
+      
+      await checkoutStepOne.assertOnPage();
+      
+      // Core checkout step one validation
+      await expect(checkoutStepOne.checkoutInfoContainer).toBeVisible();
+      await expect(checkoutStepOne.title).toContainText('Checkout: Your Information');
+      await expect(checkoutStepOne.firstName).toBeVisible();
+      await expect(checkoutStepOne.lastName).toBeVisible();
+      await expect(checkoutStepOne.postalCode).toBeVisible();
+      
+      // Validate form fields have empty values
+      await expect(checkoutStepOne.firstName).toHaveValue('');
+      await expect(checkoutStepOne.lastName).toHaveValue('');
+      await expect(checkoutStepOne.postalCode).toHaveValue('');
+      
+      console.log(`Customer: ${testData.fullName}`);
       console.log(`Postal Code: ${testData.postalCode}`);
-      await step1.submitInfo(testData.firstName, testData.lastName, testData.postalCode);
+      
+      await checkoutStepOne.submitInfo(testData.firstName, testData.lastName, testData.postalCode);
       console.log('Shipping information submitted');
     });
 
     await test.step('Order Review & Payment Processing', async () => {
       console.log('Step 5: Reviewing order and processing payment');
-      await step2.assertTotalContains('$');
+      
+      await checkoutStepTwo.assertOnPage();
+      
+      // Core checkout step two validation
+      await expect(checkoutStepTwo.checkoutSummaryContainer).toBeVisible();
+      await expect(checkoutStepTwo.title).toContainText('Checkout: Overview');
+      await expect(checkoutStepTwo.cartList).toBeVisible();
+      
+      // Validate order summary
+      await expect(checkoutStepTwo.cartList.locator('[data-test="inventory-item"]')).toHaveCount(3);
+      await expect(checkoutStepTwo.paymentInfoValue).toContainText('SauceCard #31337');
+      await expect(checkoutStepTwo.shippingInfoValue).toContainText('Free Pony Express Delivery!');
+      await expect(checkoutStepTwo.totalLabel).toContainText('Total: $');
+      
       console.log('Order total validated');
-      await step2.finish();
+      
+      await checkoutStepTwo.finish();
       console.log('Payment processed');
     });
 
     await test.step('Order Confirmation & Completion', async () => {
       console.log('Step 6: Confirming order completion');
-      await complete.assertThankYou();
+      
+      await checkoutComplete.assertOnPage();
+      
+      // Core checkout complete validation
+      await expect(checkoutComplete.checkoutCompleteContainer).toBeVisible();
+      await expect(checkoutComplete.title).toContainText('Checkout: Complete!');
+      await expect(checkoutComplete.completeHeader).toContainText('Thank you for your order!');
+      await expect(checkoutComplete.completeText).toContainText('dispatched');
+      await expect(checkoutComplete.backHomeButton).toBeVisible();
+      
       console.log('Order confirmed');
-      await complete.backHome();
+      
+      await checkoutComplete.backHome();
       await inventory.assertOnPage();
       console.log('Returned to inventory page');
-      
-      console.log('');
-      console.log('Test Summary:');
-      console.log(`Customer: ${testData.fullName}`);
-      console.log(`Products: ${selectedProducts.map(id => PRODUCT_NAMES[id]).join(', ')}`);
-      console.log(`Total items: ${selectedProducts.length}`);
-      console.log('Test completed successfully');
     });
+
+    // Final validation
+    await test.step('Final State Validation', async () => {
+      console.log('Step 7: Validating final state');
+      
+      // Validate we're back on inventory page
+      await inventory.assertOnPage();
+      await expect(inventory.title).toContainText('Products');
+      
+      // Validate all products are back to "Add to cart" state
+      for (const productId of selectedProducts) {
+        await inventory.assertProductRemoved(productId);
+      }
+      
+      console.log('Final state validated successfully');
+    });
+
+    console.log('\nTest Summary:');
+    console.log(`Customer: ${testData.fullName}`);
+    console.log(`Products: ${selectedProducts.map(id => PRODUCT_NAMES[id]).join(', ')}`);
+    console.log(`Total items: ${selectedProducts.length}`);
+    console.log('Test completed successfully');
   });
 }); 
