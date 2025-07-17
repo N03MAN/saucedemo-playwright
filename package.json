@@ -1,0 +1,39 @@
+{
+  "name": "saucedemo-playwright",
+  "version": "1.0.0",
+  "description": "Sauce Demo automation framework using Playwright + TypeScript + Page Object Model",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "report": "playwright show-report",
+    "report:allure": "allure generate allure-results --clean && allure open",
+    "install:browsers": "playwright install",
+    "codegen": "playwright codegen https://www.saucedemo.com"
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "automation",
+    "testing",
+    "saucedemo",
+    "page-object-model"
+  ],
+  "author": "Noaman Mohamed",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.0",
+    "dotenv": "^16.3.1",
+    "allure-playwright": "^2.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
