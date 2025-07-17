@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 export const PRODUCTS = {
   backpack: 'sauce-labs-backpack',
   bikeLight: 'sauce-labs-bike-light',
@@ -23,14 +25,16 @@ export const PRODUCT_NAMES = {
 // Get all product IDs as an array
 export const ALL_PRODUCTS = Object.values(PRODUCTS);
 
-// Get random selection of products using native crypto for better randomness
+// Get random selection of products using Node.js crypto for better randomness
 export function getRandomProducts(count: number): ProductId[] {
   const products = [...ALL_PRODUCTS];
   const selected: ProductId[] = [];
   
-  // Use crypto.getRandomValues for true randomness
+  // Use Node.js crypto.randomBytes for true randomness
   for (let i = 0; i < count && products.length > 0; i++) {
-    const randomIndex = Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / (0xFFFFFFFF + 1) * products.length);
+    const randomBuffer = randomBytes(4);
+    const randomValue = randomBuffer.readUInt32BE(0);
+    const randomIndex = Math.floor((randomValue / 0xFFFFFFFF) * products.length);
     selected.push(products.splice(randomIndex, 1)[0]);
   }
   
